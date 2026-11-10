@@ -1,0 +1,113 @@
+/* ---------- Theme colors (shared by every page) ---------- */
+:root {
+  color-scheme: light;
+  --teal: #14B8A6;              /* stays the same in both themes */
+  --teal-dark: #0F9488;         /* hover on teal buttons */
+  --accent-text: #0F9488;       /* teal text on light surfaces */
+  --teal-soft: #F0FDFA;
+  --teal-soft-border: #99F6E4;
+  --bg: #F5F5F4;
+  --surface: #FFFFFF;           /* cards, bubbles, bars */
+  --border: #E7E5E4;
+  --text: #1C1917;
+  --muted: #78716C;
+  --track: #E7E5E4;
+  --grey-btn: #E7E5E4;
+  --grey-btn-hover: #D6D3D1;
+  --online: #22C55E;
+  --err-bg: #FEF2F2;
+  --err-border: #FECACA;
+  --err-text: #991B1B;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --teal-dark: #0F9488;
+  --accent-text: #14B8A6;
+  --teal-soft: #284354;
+  --teal-soft-border: #2F6B70;
+  --bg: #1A1A2E;
+  --surface: #2D2D44;
+  --border: #3F3F5A;
+  --text: #E5E5E5;
+  --muted: #A6A6BC;
+  --track: #3F3F5A;
+  --grey-btn: #3F3F5A;
+  --grey-btn-hover: #4C4C6A;
+  --err-bg: #3A2232;
+  --err-border: #7F1D1D;
+  --err-text: #FCA5A5;
+}
+
+body { transition: background-color .2s ease, color .2s ease; }
+
+/* ---------- Dark mode toggle (sun / moon) ---------- */
+.theme-toggle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.theme-toggle:hover { border-color: var(--teal); background: var(--teal-soft); }
+.theme-toggle:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.theme-toggle svg { width: 20px; height: 20px; }
+.theme-toggle .icon-sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* ---------- App navigation: top bar on desktop, bottom tab bar on mobile ---------- */
+.appnav {
+  order: -1;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.appnav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+}
+.appnav a:hover { background: var(--bg); color: var(--text); }
+.appnav a[aria-current="page"] { color: var(--accent-text); background: var(--teal-soft); }
+.appnav svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .appnav {
+    order: 99;
+    gap: 0;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-bottom: none;
+    border-top: 1px solid var(--border);
+  }
+  .appnav a {
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 0;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+  .appnav a[aria-current="page"] { background: none; }
+  .appnav svg { width: 24px; height: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+}

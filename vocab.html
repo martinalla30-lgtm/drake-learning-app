@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sensei Vocabulary Cards</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14B8A6">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sensei">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+  // Apply the saved theme before the page draws (no white flash). No saved choice: follow the system setting.
+  (function () {
+    var t = null;
+    try { t = JSON.parse(localStorage.getItem("sensei-theme")); } catch (e) {}
+    if (t !== "dark" && t !== "light") {
+      t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 960px;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--bg);
+  }
+
+  /* Header with topic tabs */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px 0;
+  }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 10px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--accent-text); border-bottom-color: var(--teal); }
+
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* Progress */
+  .progress {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 15px;
+  }
+  .progress-top strong { font-weight: 700; }
+  .reset {
+    background: none; border: none; padding: 0;
+    color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer;
+  }
+  .reset:hover { color: var(--text); }
+  .bar { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+  .bar-fill {
+    height: 100%; width: 0;
+    background: var(--teal);
+    border-radius: 999px;
+    transition: width .4s ease;
+  }
+  .done-msg { margin: 8px 0 0; font-size: 14px; color: var(--accent-text); font-weight: 600; }
+  .review-note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+
+  /* Card grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .slot { position: relative; display: flex; flex-direction: column; gap: 8px; }
+
+  /* Speaker button, placed over the card's top-left corner (outside the card button) */
+  .speak {
+    position: absolute;
+    top: 10px; left: 10px;
+    z-index: 2;
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  .speak:hover { border-color: var(--teal); background: var(--teal-soft); }
+  .speak:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+  .speak.speaking { border-color: var(--teal); background: var(--teal-soft); transform: scale(1.1); }
+
+  .card {
+    position: relative;
+    width: 100%;
+    height: 230px;
+    padding: 0;
+    border: none;
+    background: none;
+    perspective: 1000px;
+    cursor: pointer;
+    border-radius: 18px;
+    font: inherit;
+    color: inherit;
+  }
+  .card:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+  .slot.next .card { outline: 3px solid var(--teal); outline-offset: 3px; }
+  .card-inner {
+    position: absolute; inset: 0;
+    transition: transform .6s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .card[aria-pressed="true"] .card-inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    text-align: center;
+  }
+  .front .word { font-size: 30px; font-weight: 700; line-height: 1.2; }
+  .front .hint { position: absolute; bottom: 12px; font-size: 12px; color: var(--muted); }
+  .back { transform: rotateY(180deg); gap: 10px; background: var(--teal-soft); border-color: var(--teal-soft-border); }
+  .back .ja { font-size: 26px; font-weight: 700; line-height: 1.3; }
+  .back .example { font-size: 15px; line-height: 1.4; font-style: italic; }
+  .back .say { font-size: 13px; color: var(--muted); }
+  .back .say b { color: var(--text); font-weight: 600; letter-spacing: .02em; }
+
+  .badge {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 12px; font-weight: 600;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .badge.know { background: var(--teal); color: #fff; }
+  .badge.learning { background: var(--grey-btn); color: var(--muted); }
+
+  .actions { display: flex; gap: 8px; }
+  .actions[hidden] { display: none; }
+  .actions button {
+    flex: 1;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-know { background: var(--teal); color: #fff; }
+  .btn-know:hover { background: var(--teal-dark); }
+  .btn-learning { background: var(--grey-btn); color: var(--text); }
+  .btn-learning:hover { background: var(--grey-btn-hover); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-inner, .bar-fill { transition: none; }
+  }
+</style>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <nav class="appnav" aria-label="Main">
+    <a href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      Dashboard
+    </a>
+    <a href="vocab.html" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="14" height="14" rx="2"/><path d="M7 2h12a2 2 0 0 1 2 2v12"/></svg>
+      Vocab
+    </a>
+    <a href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+      Practice
+    </a>
+    <a href="dashboard.html#progress">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+      Progress
+    </a>
+  </nav>
+
+  <header>
+    <div class="header-row">
+      <h1>Vocabulary</h1>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+  </header>
+
+  <main id="panel" role="tabpanel">
+    <section class="progress" aria-live="polite">
+      <div class="progress-top">
+        <span id="progressText"></span>
+        <button class="reset" id="reset" type="button">Reset topic</button>
+      </div>
+      <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+      <p class="done-msg" id="doneMsg" hidden>You know every word in this topic! ✨</p>
+      <p class="review-note">Cards you are still learning come first and come back more often.</p>
+    </section>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<script src="app.js"></script>
+<script>
+// TOPICS, KEYS, Store, wordId and recordActivity come from app.js.
+let progress = Store.get(KEYS.vocab, {});
+
+function saveProgress() {
+  Store.set(KEYS.vocab, progress);
+}
+
+const idOf = wordId;
+
+let current = Store.get(KEYS.tab, "Greetings");
+if (!TOPICS[current]) current = "Greetings";
+
+const tabsEl = document.getElementById("tabs");
+const gridEl = document.getElementById("grid");
+const panelEl = document.getElementById("panel");
+
+function renderTabs() {
+  tabsEl.innerHTML = "";
+  Object.keys(TOPICS).forEach(name => {
+    const b = document.createElement("button");
+    b.className = "tab";
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.textContent = name;
+    b.setAttribute("aria-selected", String(name === current));
+    b.addEventListener("click", () => {
+      current = name;
+      Store.set(KEYS.tab, name);
+      renderTabs();
+      renderTopic();
+      panelEl.scrollTop = 0;
+    });
+    tabsEl.appendChild(b);
+  });
+}
+
+function renderProgress() {
+  const words = TOPICS[current];
+  const known = words.filter(w => progress[idOf(current, w)] === "know").length;
+  document.getElementById("progressText").innerHTML =
+    `<strong>${known}</strong> of <strong>${words.length}</strong> words learned`;
+  document.getElementById("barFill").style.width = (known / words.length * 100) + "%";
+  document.getElementById("doneMsg").hidden = known !== words.length;
+}
+
+function badgeHTML(status) {
+  if (status === "know") return '<span class="badge know">Known ✓</span>';
+  if (status === "learning") return '<span class="badge learning">Learning</span>';
+  return "";
+}
+
+// ---- Simple spaced repetition ----
+// Weights for picking the next card: "Still Learning" cards come up 3× as often as "Known" ones.
+// Cards not rated yet are treated like "Still Learning" until the student rates them.
+const WEIGHTS = { learning: 3, new: 3, know: 1 };
+const ORDER = { learning: 0, new: 1, know: 2 }; // sort order when a topic opens
+
+let deck = [];   // words in the order shown in the grid
+let recent = []; // grid indexes rated recently, to avoid showing the same card again right away
+
+function statusOf(w) {
+  const s = progress[idOf(current, w)];
+  return s === "know" || s === "learning" ? s : "new";
+}
+
+// Still Learning first, then new cards, then Known. Original order is kept inside each group.
+function orderedDeck() {
+  return TOPICS[current]
+    .map((w, i) => ({ w, i }))
+    .sort((a, b) => ORDER[statusOf(a.w)] - ORDER[statusOf(b.w)] || a.i - b.i)
+    .map(x => x.w);
+}
+
+// Weighted random pick of the next card, skipping the last 2 cards the student rated.
+function pickNext(justRated) {
+  recent.push(justRated);
+  const skip = Math.min(2, deck.length - 1);
+  const avoid = new Set(skip > 0 ? recent.slice(-skip) : []);
+  const candidates = deck
+    .map((w, i) => ({ i, weight: WEIGHTS[statusOf(w)] }))
+    .filter(c => !avoid.has(c.i));
+  if (candidates.length === 0) return -1;
+
+  let r = Math.random() * candidates.reduce((sum, c) => sum + c.weight, 0);
+  for (const c of candidates) {
+    r -= c.weight;
+    if (r < 0) return c.i;
+  }
+  return candidates[candidates.length - 1].i;
+}
+
+function renderTopic() {
+  gridEl.innerHTML = "";
+  deck = orderedDeck();
+  recent = [];
+  deck.forEach((w, i) => {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.dataset.index = i;
+
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "card";
+    card.setAttribute("aria-pressed", "false");
+    card.setAttribute("aria-label", `${w.en}. Tap to flip.`);
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="face front">
+          <span class="badge-wrap">${badgeHTML(progress[idOf(current, w)])}</span>
+          <div class="word">${w.en}</div>
+          <div class="hint">Tap to flip</div>
+        </div>
+        <div class="face back">
+          <div class="ja" lang="ja">${w.ja}</div>
+          <div class="example">“${w.ex}”</div>
+          <div class="say">Say it: <b>${w.say}</b></div>
+        </div>
+      </div>`;
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    actions.hidden = true;
+    actions.innerHTML = `
+      <button type="button" class="btn-know">Know It ✓</button>
+      <button type="button" class="btn-learning">Still Learning</button>`;
+
+    card.addEventListener("click", () => setFlipped(slot, card.getAttribute("aria-pressed") !== "true"));
+    actions.querySelector(".btn-know").addEventListener("click", () => rate(i, "know"));
+    actions.querySelector(".btn-learning").addEventListener("click", () => rate(i, "learning"));
+
+    slot.append(card);
+    if (canSpeak) {
+      const speakBtn = document.createElement("button");
+      speakBtn.type = "button";
+      speakBtn.className = "speak";
+      speakBtn.textContent = "🔊";
+      speakBtn.setAttribute("aria-label", `Listen: ${w.en}`);
+      speakBtn.title = "Listen";
+      speakBtn.addEventListener("click", () => speak(w.en, speakBtn));
+      slot.append(speakBtn);
+    }
+    slot.append(actions);
+    gridEl.appendChild(slot);
+  });
+  renderProgress();
+}
+
+// Read words aloud with the browser's built-in speech (Web Speech API).
+const canSpeak = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+let enVoice = null;
+
+function pickVoice() {
+  const voices = speechSynthesis.getVoices();
+  enVoice =
+    voices.find(v => v.lang === "en-US" && v.localService) ||
+    voices.find(v => v.lang === "en-US") ||
+    voices.find(v => v.lang && v.lang.startsWith("en")) ||
+    null;
+}
+if (canSpeak) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice; // voices often load a moment after the page
+}
+
+function speak(text, btn) {
+  speechSynthesis.cancel(); // stop any word that is still playing
+  document.querySelectorAll(".speak.speaking").forEach(b => b.classList.remove("speaking"));
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.85; // a little slower for learners
+  if (enVoice) u.voice = enVoice;
+  u.onstart = () => btn.classList.add("speaking");
+  u.onend = u.onerror = () => btn.classList.remove("speaking");
+  speechSynthesis.speak(u);
+}
+
+function setFlipped(slot, flipped) {
+  const card = slot.querySelector(".card");
+  card.setAttribute("aria-pressed", String(flipped));
+  slot.querySelector(".actions").hidden = !flipped;
+  slot.classList.remove("next");
+}
+
+function rate(index, status) {
+  const w = deck[index];
+  progress[idOf(current, w)] = status;
+  saveProgress();
+  recordActivity();
+  recordStudiedTopic(current);
+
+  const slots = gridEl.querySelectorAll(".slot");
+  const slot = slots[index];
+  setFlipped(slot, false);
+  slot.querySelector(".badge-wrap").innerHTML = badgeHTML(status);
+  renderProgress();
+
+  // Move to the next card, picked by spaced repetition (Still Learning 3× more often than Known).
+  // The grid order stays the same while studying; it is re-sorted when the topic is opened again.
+  const next = pickNext(index);
+  slots.forEach(s => s.classList.remove("next"));
+  if (next !== -1) {
+    const target = slots[next];
+    target.classList.add("next");
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.querySelector(".card").focus({ preventScroll: true });
+  }
+}
+
+document.getElementById("reset").addEventListener("click", () => {
+  TOPICS[current].forEach(w => delete progress[idOf(current, w)]);
+  saveProgress();
+  renderTopic();
+});
+
+renderTabs();
+renderTopic();
+</script>
+</body>
+</html>

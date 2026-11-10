@@ -1,0 +1,23 @@
+# Dependencies (Vercel installs them from package.json)
+node_modules/
+
+# Secrets: API keys go in Vercel's Environment Variables or a local .env.local, never in git
+.env
+.env.*
+
+# Vercel local settings
+.vercel/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp

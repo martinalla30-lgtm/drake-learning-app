@@ -1,0 +1,10 @@
+{
+  "name": "sensei-english",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sensei English: vocabulary cards and AI conversation practice. Static pages + one Vercel serverless function (api/chat.js).",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0"
+  }
+}
